@@ -18,13 +18,13 @@ from openhands.app_server.event_callback.event_callback_result_models import (
 )
 from openhands.app_server.services.injector import InjectorState
 from openhands.app_server.user.specifiy_user_context import ADMIN, USER_CONTEXT_ATTR
+
+# TODO(OpenHands/evaluation#418): import from openhands.sdk.utils.redact
+from openhands.app_server.utils._redact_compat import redact_text_secrets
 from openhands.app_server.utils.docker_utils import (
     replace_localhost_hostname_for_docker,
 )
 from openhands.sdk import Event, MessageEvent
-
-# TODO(OpenHands/evaluation#418): import from openhands.sdk.utils.redact
-from openhands.utils._redact_compat import redact_text_secrets
 
 _logger = logging.getLogger(__name__)
 
@@ -68,6 +68,7 @@ async def _poll_for_title(
             # Transient agent-server failures are acceptable; retry later.
             _logger.warning(
                 'Title poll failed for conversation %s: %s',
+                url,
                 exc,
             )
         else:

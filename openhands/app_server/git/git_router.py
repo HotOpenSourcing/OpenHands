@@ -18,6 +18,13 @@ from openhands.app_server.git.git_models import (
     SortOrder,
     SuggestedTaskPage,
 )
+from openhands.app_server.integrations.provider import ProviderHandler
+from openhands.app_server.integrations.service_types import (
+    Branch,
+    ProviderType,
+    Repository,
+    SuggestedTask,
+)
 from openhands.app_server.user.user_context import UserContext
 from openhands.app_server.utils.dependencies import get_dependencies
 from openhands.app_server.utils.paging_utils import (
@@ -25,16 +32,9 @@ from openhands.app_server.utils.paging_utils import (
     encode_page_id,
     paginate_results,
 )
-from openhands.integrations.provider import ProviderHandler
-from openhands.integrations.service_types import (
-    Branch,
-    ProviderType,
-    Repository,
-    SuggestedTask,
-)
 
 if TYPE_CHECKING:
-    from openhands.integrations.provider import PROVIDER_TOKEN_TYPE
+    from openhands.app_server.integrations.provider import PROVIDER_TOKEN_TYPE
 
 # We use the get_dependencies method here to signal to the OpenAPI docs that this endpoint
 # is protected. The actual protection is provided by SetAuthCookieMiddleware
@@ -241,13 +241,30 @@ async def search_branches(
     if decoded_page_id is not None:
         page = decoded_page_id
 
-    # Get search results - we'll handle pagination ourselves
-    branches: list[Branch] = await client.search_branches(
-        selected_provider=provider,
-        repository=repository,
-        query=query,
-        per_page=limit + 1,  # We'll handle pagination ourselves
-    )
+    if query:
+        if page != 1:
+            # TODO(#13883): Support pagination for branch search after refactoring.
+            # The search_branches method does not support paging in the same way as
+            # get_branches - those should be merged into a single paginated method
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Pagination not yet supported for branch search queries. Use empty query to list all branches with pagination.',
+            )
+        # Get search results - we'll handle pagination ourselves
+        branches: list[Branch] = await client.search_branches(
+            selected_provider=provider,
+            repository=repository,
+            query=query,
+            per_page=limit + 1,
+        )
+    else:
+        current_page = await client.get_branches(
+            repository=repository,
+            specified_provider=provider,
+            page=page,
+            per_page=limit + 1,
+        )
+        branches = current_page.branches
 
     next_page_id = None
     if len(branches) > limit:
