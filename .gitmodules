@@ -1,0 +1,3 @@
+[submodule "external/socrati-code"]
+	path = external/socrati-code
+	url = https://github.com/HotOpenSourcing/SocratiCode.git
